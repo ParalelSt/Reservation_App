@@ -1,0 +1,23 @@
+{
+  "name": "reservation-app",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "npm run generate --workspace=packages/database",
+    "db:migrate": "npm run migrate --workspace=packages/database",
+    "db:push": "npm run push --workspace=packages/database",
+    "db:studio": "npm run studio --workspace=packages/database",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "packageManager": "npm@11.6.2",
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}
