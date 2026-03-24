@@ -5,6 +5,7 @@ import type { FacilityType, FacilitySelection, Reservation, ReservationFormData 
 import { FACILITIES, DURATION_OPTIONS, OPERATING_HOURS, MAX_GUESTS } from '@/lib/constants/facilities';
 import { useReservationStore } from '@/lib/store/reservationStore';
 import { generateTimeSlots, calculateEndTime, hasTimeConflict } from '@/lib/helpers/timeSlots';
+import { useHydrated } from '@/hooks/useHydrated';
 import {
   requestNotificationPermission,
   showBookingConfirmation,
@@ -49,6 +50,7 @@ export function useBookingForm(today: string) {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [lastReservation, setLastReservation] = useState<Reservation | null>(null);
 
+  const hydrated = useHydrated();
   const store = useReservationStore();
 
   const selectedFacilityTypes = useMemo(
@@ -67,25 +69,17 @@ export function useBookingForm(today: string) {
     }, 0);
   }, [formState.facilities, formState.durationHours]);
 
-  // Check time availability across all selected facilities
-  const existingBookingsPerFacility = useMemo(() => {
-    const bookings: Record<string, { startTime: string; endTime: string }[]> = {};
-    for (const type of selectedFacilityTypes) {
-      bookings[type] = store
-        .getReservationsByDate(type, formState.date)
+  // All bookings for the selected date — shared space, so any booking blocks the time
+  // Use empty array until hydrated to avoid server/client mismatch
+  const allExistingBookings = useMemo(
+    () => {
+      if (!hydrated) return [];
+      return store
+        .getAllReservationsByDate(formState.date)
         .map((b) => ({ startTime: b.startTime, endTime: b.endTime }));
-    }
-    return bookings;
-  }, [store, selectedFacilityTypes, formState.date]);
-
-  // Merge all bookings from selected facilities for time slot display
-  const allExistingBookings = useMemo(() => {
-    const merged: { startTime: string; endTime: string }[] = [];
-    for (const type of selectedFacilityTypes) {
-      merged.push(...(existingBookingsPerFacility[type] ?? []));
-    }
-    return merged;
-  }, [existingBookingsPerFacility, selectedFacilityTypes]);
+    },
+    [store, formState.date, hydrated],
+  );
 
   const timeSlots = useMemo(
     () => generateTimeSlots(allExistingBookings),

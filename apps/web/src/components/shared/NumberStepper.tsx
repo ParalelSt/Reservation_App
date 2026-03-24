@@ -38,7 +38,7 @@ export function NumberStepper({ id, value, onChange, min, step, placeholder, has
     'text-sm text-gray-900',
     'transition-all duration-150 ease-out',
     'focus:outline-none focus:ring-2 focus:ring-indigo-500',
-    'appearance-none',
+    '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
     hasError
       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
       : 'border-gray-300 focus:border-indigo-500',

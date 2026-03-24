@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { User, CalendarDays, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 
 const AVATAR_SIZE = 32;
@@ -90,15 +90,6 @@ export function ProfileDropdown({ user }: Props) {
         >
           <User className="h-4 w-4 text-gray-400" />
           Profil
-        </Link>
-        <Link
-          href="/profile"
-          className={menuItemClassName}
-          aria-label="Moje rezervacije"
-          onClick={closeDropdown}
-        >
-          <CalendarDays className="h-4 w-4 text-gray-400" />
-          Moje Rezervacije
         </Link>
       </div>
 

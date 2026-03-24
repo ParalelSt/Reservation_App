@@ -1,11 +1,10 @@
 'use client';
 
-import { Music, Flame, Dumbbell, Clock, CreditCard, FileText, CalendarPlus, Users } from 'lucide-react';
+import { Music, Flame, Dumbbell, Clock, CreditCard, FileText, Users, Minus } from 'lucide-react';
 import { useBookingForm } from '@/hooks/useBookingForm';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { formatTime } from '@/lib/helpers/timeSlots';
-import { downloadCalendarEvent } from '@/lib/helpers/calendar';
 import { FACILITIES, DURATION_OPTIONS, MAX_GUESTS } from '@/lib/constants/facilities';
 import { NumberStepper } from '@/components/shared/NumberStepper';
 import { SuccessModal } from '@/components/shared/SuccessModal';
@@ -35,7 +34,6 @@ export function BookingPageClient({ user, today }: Props) {
     isFormValid,
     isSubmitting,
     submitSuccess,
-    lastReservation,
     resetSuccess,
     setFacilityGuests,
     setDate,
@@ -60,21 +58,12 @@ export function BookingPageClient({ user, today }: Props) {
     </div>
   ) : null;
 
-  const calendarAction = lastReservation
-    ? {
-        label: 'Dodaj u kalendar',
-        icon: <CalendarPlus className="h-4 w-4" />,
-        onClick: () => downloadCalendarEvent(lastReservation),
-      }
-    : undefined;
-
   const successModal = (
     <SuccessModal
       isOpen={submitSuccess}
       onClose={resetSuccess}
       title="Rezervacija Poslana!"
       message="Vaša rezervacija je uspješno poslana i čeka odobrenje. Možete pratiti status na stranici profila."
-      secondaryAction={calendarAction}
     />
   );
 
@@ -130,27 +119,28 @@ export function BookingPageClient({ user, today }: Props) {
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-gray-500" />
             <span className="text-sm text-gray-600">Broj osoba</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setFacilityGuests(facility.type, 0)}
               aria-label={`Isključi ${facility.name}`}
               className={mergeClassNames(
-                'rounded-lg px-3 py-1',
-                'text-xs font-medium',
+                'flex h-8 w-8 items-center justify-center',
+                'rounded-lg',
+                'text-sm font-medium',
                 'border transition-all duration-150 ease-out',
                 'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
                 !isSelected
-                  ? 'border-gray-400 bg-gray-100 text-gray-700'
-                  : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
+                  ? 'border-gray-300 bg-white text-gray-600'
+                  : 'border-gray-300 bg-white text-gray-600 hover:border-indigo-300',
               )}
             >
-              —
+              <Minus className="h-3.5 w-3.5" />
             </button>
             {guestButtons}
           </div>

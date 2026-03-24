@@ -14,6 +14,7 @@ interface ReservationState {
   deleteReservation: (id: string) => void;
   getReservationsByFacility: (facilityType: FacilityType) => Reservation[];
   getReservationsByDate: (facilityType: FacilityType, date: string) => Reservation[];
+  getAllReservationsByDate: (date: string) => Reservation[];
   getReservationsByUser: (userId: string) => Reservation[];
 }
 
@@ -94,12 +95,27 @@ export const useReservationStore = create<ReservationState>()(
         );
       },
 
+      getAllReservationsByDate: (date) => {
+        return get().reservations.filter(
+          (r) =>
+            r.date === date &&
+            r.status !== 'cancelled' &&
+            r.status !== 'declined',
+        );
+      },
+
       getReservationsByUser: (userId) => {
         return get().reservations.filter((r) => r.userId === userId);
       },
     }),
     {
       name: 'reservation-storage',
+      version: 1,
+      migrate: (persisted) => {
+        const state = persisted as { reservations?: Reservation[] };
+        // Wipe old-format reservations — they used a different schema (single facilityType)
+        return { reservations: state.reservations?.filter((r) => r.facilities) ?? [] };
+      },
     },
   ),
 );

@@ -66,7 +66,7 @@ export function Sidebar({ pathname, isAdmin }: Props) {
       className={mergeClassNames(
         'hidden lg:flex lg:w-60 lg:flex-col lg:fixed lg:inset-y-0',
         'border-r border-gray-200 bg-white',
-        'px-4 py-6',
+        'px-4 pb-6 pt-20',
         'overflow-y-auto',
       )}
     >

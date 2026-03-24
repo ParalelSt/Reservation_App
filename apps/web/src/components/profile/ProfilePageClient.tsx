@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useReservationStore } from '@/lib/store/reservationStore';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { formatTime } from '@/lib/helpers/timeSlots';
 import { downloadCalendarEvent } from '@/lib/helpers/calendar';
+import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
 import { Button } from '@/components/shared/Button';
@@ -13,6 +15,7 @@ import { IconButton } from '@/components/shared/IconButton';
 import type { Reservation, FacilityType, ReservationStatus } from '@/types/reservation';
 
 const AVATAR_SIZE = 80;
+const ITEMS_PER_PAGE = 5;
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
   pending: 'Na čekanju',
@@ -58,18 +61,23 @@ function getSelectedFacilitySummary(reservation: Reservation): string {
     .join(', ');
 }
 
-function sortByDateDescending(a: Reservation, b: Reservation): number {
-  const dateComparison = b.date.localeCompare(a.date);
-  if (dateComparison !== 0) return dateComparison;
-  return b.startTime.localeCompare(a.startTime);
-}
-
 export function ProfilePageClient({ user }: Props) {
+  const [currentPage, setCurrentPage] = useState(0);
+
   const getReservationsByUser = useReservationStore((state) => state.getReservationsByUser);
   const updateReservationStatus = useReservationStore((state) => state.updateReservationStatus);
 
   const reservations = getReservationsByUser(user.id);
-  const sortedReservations = [...reservations].sort(sortByDateDescending);
+
+  // Newest first by creation date
+  const sortedReservations = [...reservations].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedReservations.length / ITEMS_PER_PAGE));
+  const clampedPage = Math.min(currentPage, totalPages - 1);
+  const startIndex = clampedPage * ITEMS_PER_PAGE;
+  const paginatedReservations = sortedReservations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleCancel = (reservationId: string) => {
     updateReservationStatus(reservationId, 'cancelled');
@@ -81,11 +89,12 @@ export function ProfilePageClient({ user }: Props) {
     </Card>
   );
 
-  const reservationCards = sortedReservations.map((reservation) => {
+  const reservationCards = paginatedReservations.map((reservation) => {
     const isPending = reservation.status === 'pending';
-    const isActive = reservation.status === 'pending' || reservation.status === 'confirmed';
+    const isConfirmed = reservation.status === 'confirmed';
+    const isCancellable = isPending || isConfirmed;
 
-    const cancelButton = isPending ? (
+    const cancelButton = isCancellable ? (
       <Button
         variant="danger"
         size="sm"
@@ -96,7 +105,7 @@ export function ProfilePageClient({ user }: Props) {
       </Button>
     ) : null;
 
-    const calendarButton = isActive ? (
+    const calendarButton = isConfirmed ? (
       <IconButton
         icon={<CalendarPlus className="h-4 w-4" />}
         size="sm"
@@ -111,7 +120,7 @@ export function ProfilePageClient({ user }: Props) {
       <Card key={reservation.id} padding="sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-gray-900">
                 {facilitySummary}
               </span>
@@ -140,8 +149,58 @@ export function ProfilePageClient({ user }: Props) {
   });
 
   const hasReservations = sortedReservations.length > 0;
+  const showPagination = sortedReservations.length > ITEMS_PER_PAGE;
+
+  const pagination = showPagination ? (
+    <div className="flex items-center justify-between">
+      <p className="text-sm text-gray-500">
+        {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, sortedReservations.length)} od {sortedReservations.length}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={clampedPage === 0}
+          onClick={() => setCurrentPage((p) => p - 1)}
+          aria-label="Prethodna stranica"
+          className={mergeClassNames(
+            'flex items-center justify-center',
+            'h-8 w-8 rounded-lg border',
+            'text-sm transition-all duration-150 ease-out',
+            'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+            'disabled:cursor-not-allowed disabled:opacity-40',
+            'border-gray-300 text-gray-600 hover:bg-gray-100',
+          )}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-sm text-gray-700">
+          {clampedPage + 1} / {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={clampedPage >= totalPages - 1}
+          onClick={() => setCurrentPage((p) => p + 1)}
+          aria-label="Sljedeća stranica"
+          className={mergeClassNames(
+            'flex items-center justify-center',
+            'h-8 w-8 rounded-lg border',
+            'text-sm transition-all duration-150 ease-out',
+            'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+            'disabled:cursor-not-allowed disabled:opacity-40',
+            'border-gray-300 text-gray-600 hover:bg-gray-100',
+          )}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const reservationContent = hasReservations ? (
-    <div className="flex flex-col gap-4">{reservationCards}</div>
+    <div className="flex flex-col gap-4">
+      {reservationCards}
+      {pagination}
+    </div>
   ) : (
     emptyState
   );

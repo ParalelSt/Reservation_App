@@ -3,8 +3,18 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { FacilityType, ReservationStatus } from '@/types/reservation';
 import { useReservationStore } from '@/lib/store/reservationStore';
+import { useNotificationStore } from '@/lib/store/notificationStore';
+import { showNotification } from '@/lib/helpers/notifications';
 
 type FilterStatus = ReservationStatus | 'all';
+
+const FACILITY_LABELS: Record<FacilityType, string> = {
+  studio: 'Glazbeni Studio',
+  sauna: 'Sauna',
+  gym: 'Teretana',
+};
+
+const FACILITY_TYPES: FacilityType[] = ['studio', 'sauna', 'gym'];
 
 /** Hook for managing the admin reservations view */
 export function useAdminReservations() {
@@ -13,6 +23,7 @@ export function useAdminReservations() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const store = useReservationStore();
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const filteredReservations = useMemo(() => {
     let result = store.reservations;
@@ -50,18 +61,39 @@ export function useAdminReservations() {
     return counts;
   }, [store.reservations]);
 
+  const getFacilityLabel = useCallback((reservationId: string): string => {
+    const reservation = store.reservations.find((r) => r.id === reservationId);
+    if (!reservation) return '';
+    return FACILITY_TYPES
+      .filter((type) => reservation.facilities[type] > 0)
+      .map((type) => FACILITY_LABELS[type])
+      .join(', ');
+  }, [store.reservations]);
+
   const handleConfirm = useCallback(
     (id: string) => {
+      const facilityLabel = getFacilityLabel(id);
+      const reservation = store.reservations.find((r) => r.id === id);
       store.updateReservationStatus(id, 'confirmed');
+
+      const message = `Vaša rezervacija za ${facilityLabel} (${reservation?.date}, ${reservation?.startTime}) je prihvaćena! Posjetite profil da dodate termin u kalendar.`;
+      addNotification('Rezervacija Prihvaćena', message, 'success', id, '/profile');
+      showNotification('Rezervacija Prihvaćena', message);
     },
-    [store],
+    [store, addNotification, getFacilityLabel],
   );
 
   const handleDecline = useCallback(
     (id: string) => {
+      const facilityLabel = getFacilityLabel(id);
+      const reservation = store.reservations.find((r) => r.id === id);
       store.updateReservationStatus(id, 'declined');
+
+      const message = `Vaša rezervacija za ${facilityLabel} (${reservation?.date}, ${reservation?.startTime}) je odbijena.`;
+      addNotification('Rezervacija Odbijena', message, 'danger', id, '/profile');
+      showNotification('Rezervacija Odbijena', message);
     },
-    [store],
+    [store, addNotification, getFacilityLabel],
   );
 
   const handleDelete = useCallback(

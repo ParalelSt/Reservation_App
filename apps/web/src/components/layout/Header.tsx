@@ -1,10 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { Menu } from 'lucide-react';
 import { useUIStore } from '@/lib/store/uiStore';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 import { IconButton } from '@/components/shared/IconButton';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface Props {
   user: { name?: string; picture?: string; email?: string } | null;
@@ -16,7 +18,10 @@ export function Header({ user }: Props) {
   const toggleMobileNav = useUIStore((state) => state.toggleMobileNav);
 
   const userSection = user ? (
-    <ProfileDropdown user={user} />
+    <div className="flex items-center gap-2">
+      <NotificationBell />
+      <ProfileDropdown user={user} />
+    </div>
   ) : (
     <a
       href="/auth/login"
@@ -52,7 +57,9 @@ export function Header({ user }: Props) {
             icon={<Menu className="h-5 w-5" />}
           />
         </div>
-        <h1 className="text-lg font-semibold text-gray-900">{APP_NAME}</h1>
+        <Link href="/" className="text-lg font-semibold text-gray-900 transition-all duration-150 ease-out hover:text-indigo-600">
+          {APP_NAME}
+        </Link>
       </div>
 
       {userSection}

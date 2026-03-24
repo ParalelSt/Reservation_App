@@ -74,7 +74,7 @@ export function FacilityDetail({ facility }: Props) {
             <span className="text-2xl font-bold text-indigo-700">
               {formatCurrency(facility.minimumPricePerHour)}
             </span>
-            <span className="text-sm text-indigo-600">/ sat (minimalno)</span>
+            <span className="text-sm text-indigo-600">/ sat</span>
           </div>
 
           <div className="flex flex-col gap-4">
