@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Reservation, ReservationFormData, FacilityType, FacilitySelection } from '@/types/reservation';
 import { generateId } from '@/lib/helpers/generateId';
 import { calculateEndTime } from '@/lib/helpers/timeSlots';
-import { FACILITIES } from '@/lib/constants/facilities';
+import { FACILITIES, FIXED_PRICE_FACILITIES } from '@/lib/constants/facilities';
 
 const FACILITY_TYPES: FacilityType[] = ['studio', 'sauna', 'gym'];
 
@@ -24,7 +24,9 @@ function calculateMinimumPrice(facilities: FacilitySelection, durationHours: num
     const guestCount = facilities[type];
     if (guestCount === 0) return total;
     const facility = FACILITIES.find((f) => f.type === type);
-    return total + (facility?.minimumPricePerHour ?? 0) * durationHours * guestCount;
+    const pricePerHour = facility?.minimumPricePerHour ?? 0;
+    const multiplier = FIXED_PRICE_FACILITIES.includes(type) ? 1 : guestCount;
+    return total + pricePerHour * durationHours * multiplier;
   }, 0);
 }
 

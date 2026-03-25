@@ -8,7 +8,7 @@ import { PWAInstallBanner } from '@/components/layout/PWAInstallBanner';
 
 interface Props {
   children: React.ReactNode;
-  user: { name?: string; picture?: string; email?: string } | null;
+  user: { id: string; name?: string; picture?: string; email?: string } | null;
   isAdmin: boolean;
 }
 

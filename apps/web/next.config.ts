@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.facebook.com',
       },
+      {
+        protocol: 'https',
+        hostname: 's.gravatar.com',
+      },
     ],
   },
 };

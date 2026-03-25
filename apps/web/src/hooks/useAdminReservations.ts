@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import type { FacilityType, ReservationStatus } from '@/types/reservation';
-import { useReservationStore } from '@/lib/store/reservationStore';
-import { useNotificationStore } from '@/lib/store/notificationStore';
-import { showNotification } from '@/lib/helpers/notifications';
+import { useState, useMemo, useCallback, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import type { FacilityType, Reservation, ReservationStatus } from '@/types/reservation';
+import {
+  updateReservationStatus as updateStatusAction,
+  deleteReservation as deleteAction,
+} from '@/lib/actions/reservations';
+import { createNotification } from '@/lib/actions/notifications';
 
 type FilterStatus = ReservationStatus | 'all';
 
@@ -16,17 +19,28 @@ const FACILITY_LABELS: Record<FacilityType, string> = {
 
 const FACILITY_TYPES: FacilityType[] = ['studio', 'sauna', 'gym'];
 
+function getFacilityLabel(reservation: Reservation): string {
+  return FACILITY_TYPES
+    .filter((type) => reservation.facilities[type] > 0)
+    .map((type) => FACILITY_LABELS[type])
+    .join(', ');
+}
+
+interface Props {
+  initialReservations: Reservation[];
+}
+
 /** Hook for managing the admin reservations view */
-export function useAdminReservations() {
+export function useAdminReservations({ initialReservations }: Props) {
+  const [reservations, setReservations] = useState(initialReservations);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterFacility, setFilterFacility] = useState<FacilityType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  const store = useReservationStore();
-  const addNotification = useNotificationStore((s) => s.addNotification);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const filteredReservations = useMemo(() => {
-    let result = store.reservations;
+    let result = reservations;
 
     if (filterStatus !== 'all') {
       result = result.filter((r) => r.status === filterStatus);
@@ -46,61 +60,71 @@ export function useAdminReservations() {
       );
     }
 
-    // Sort by creation date, newest first
     return [...result].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [store.reservations, filterStatus, filterFacility, searchQuery]);
+  }, [reservations, filterStatus, filterFacility, searchQuery]);
 
   const statusCounts = useMemo(() => {
     const counts = { all: 0, pending: 0, confirmed: 0, declined: 0, cancelled: 0 };
-    for (const reservation of store.reservations) {
+    for (const reservation of reservations) {
       counts.all++;
       counts[reservation.status]++;
     }
     return counts;
-  }, [store.reservations]);
-
-  const getFacilityLabel = useCallback((reservationId: string): string => {
-    const reservation = store.reservations.find((r) => r.id === reservationId);
-    if (!reservation) return '';
-    return FACILITY_TYPES
-      .filter((type) => reservation.facilities[type] > 0)
-      .map((type) => FACILITY_LABELS[type])
-      .join(', ');
-  }, [store.reservations]);
+  }, [reservations]);
 
   const handleConfirm = useCallback(
     (id: string) => {
-      const facilityLabel = getFacilityLabel(id);
-      const reservation = store.reservations.find((r) => r.id === id);
-      store.updateReservationStatus(id, 'confirmed');
+      const reservation = reservations.find((r) => r.id === id);
+      if (!reservation) return;
 
-      const message = `Vaša rezervacija za ${facilityLabel} (${reservation?.date}, ${reservation?.startTime}) je prihvaćena! Posjetite profil da dodate termin u kalendar.`;
-      addNotification('Rezervacija Prihvaćena', message, 'success', id, '/profile');
-      showNotification('Rezervacija Prihvaćena', message);
+      // Optimistic update
+      setReservations((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: 'confirmed' as const } : r)),
+      );
+
+      startTransition(async () => {
+        await updateStatusAction(id, 'confirmed');
+        const facilityLabel = getFacilityLabel(reservation);
+        const message = `Vaša rezervacija za ${facilityLabel} (${reservation.date}, ${reservation.startTime}) je prihvaćena! Posjetite profil da dodate termin u kalendar.`;
+        await createNotification(reservation.userId, 'Rezervacija Prihvaćena', message, 'success', id, '/profile');
+        router.refresh();
+      });
     },
-    [store, addNotification, getFacilityLabel],
+    [reservations, router],
   );
 
   const handleDecline = useCallback(
     (id: string) => {
-      const facilityLabel = getFacilityLabel(id);
-      const reservation = store.reservations.find((r) => r.id === id);
-      store.updateReservationStatus(id, 'declined');
+      const reservation = reservations.find((r) => r.id === id);
+      if (!reservation) return;
 
-      const message = `Vaša rezervacija za ${facilityLabel} (${reservation?.date}, ${reservation?.startTime}) je odbijena.`;
-      addNotification('Rezervacija Odbijena', message, 'danger', id, '/profile');
-      showNotification('Rezervacija Odbijena', message);
+      setReservations((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: 'declined' as const } : r)),
+      );
+
+      startTransition(async () => {
+        await updateStatusAction(id, 'declined');
+        const facilityLabel = getFacilityLabel(reservation);
+        const message = `Vaša rezervacija za ${facilityLabel} (${reservation.date}, ${reservation.startTime}) je odbijena.`;
+        await createNotification(reservation.userId, 'Rezervacija Odbijena', message, 'danger', id, '/profile');
+        router.refresh();
+      });
     },
-    [store, addNotification, getFacilityLabel],
+    [reservations, router],
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      store.deleteReservation(id);
+      setReservations((prev) => prev.filter((r) => r.id !== id));
+
+      startTransition(async () => {
+        await deleteAction(id);
+        router.refresh();
+      });
     },
-    [store],
+    [router],
   );
 
   return {
@@ -109,6 +133,7 @@ export function useAdminReservations() {
     filterStatus,
     filterFacility,
     searchQuery,
+    isPending,
     setFilterStatus,
     setFilterFacility,
     setSearchQuery,

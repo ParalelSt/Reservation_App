@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCircle, XCircle, Info } from 'lucide-react';
-import { useNotificationStore } from '@/lib/store/notificationStore';
-import type { AppNotification } from '@/lib/store/notificationStore';
+import {
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from '@/lib/actions/notifications';
+import type { AppNotification } from '@/lib/actions/notifications';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 
 const MAX_VISIBLE_NOTIFICATIONS = 10;
@@ -85,15 +89,25 @@ function NotificationItem({ notification, onRead, onNavigate }: NotificationItem
   );
 }
 
-export function NotificationBell() {
+interface Props {
+  userId: string;
+}
+
+export function NotificationBell({ userId }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  const notifications = useNotificationStore((s) => s.notifications);
-  const unreadCount = useNotificationStore((s) => s.getUnreadCount());
-  const markAsRead = useNotificationStore((s) => s.markAsRead);
-  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
+  // Fetch notifications on mount and when dropdown opens
+  useEffect(() => {
+    async function fetchNotifications() {
+      const data = await getUserNotifications(userId);
+      setNotifications(data);
+    }
+    fetchNotifications();
+  }, [userId, isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -110,8 +124,25 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
   const visibleNotifications = notifications.slice(0, MAX_VISIBLE_NOTIFICATIONS);
   const hasNotifications = visibleNotifications.length > 0;
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+    startTransition(async () => {
+      await markNotificationAsRead(id);
+    });
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    startTransition(async () => {
+      await markAllNotificationsAsRead(userId);
+    });
+  };
 
   const badge = unreadCount > 0 ? (
     <span className={mergeClassNames(
@@ -140,7 +171,7 @@ export function NotificationBell() {
     <NotificationItem
       key={notification.id}
       notification={notification}
-      onRead={markAsRead}
+      onRead={handleMarkAsRead}
       onNavigate={handleNavigate}
     />
   ));
@@ -148,7 +179,7 @@ export function NotificationBell() {
   const markAllButton = unreadCount > 0 ? (
     <button
       type="button"
-      onClick={markAllAsRead}
+      onClick={handleMarkAllAsRead}
       className="text-xs font-medium text-indigo-600 transition-all duration-150 ease-out hover:text-indigo-700"
     >
       Označi sve pročitanim

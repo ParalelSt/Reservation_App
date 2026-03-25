@@ -1,5 +1,6 @@
 import { auth0 } from '@/lib/auth0';
 import { redirect } from 'next/navigation';
+import { getAllReservations } from '@/lib/actions/reservations';
 import { AdminPageClient } from '@/components/admin/AdminPageClient';
 
 export default async function AdminPage() {
@@ -9,11 +10,9 @@ export default async function AdminPage() {
     redirect('/auth/login');
   }
 
-  // Check admin role from Auth0 custom claims or app_metadata
   const roles = session.user?.['https://reservehub.com/roles'];
   const isAdmin = Array.isArray(roles) && roles.includes('admin');
 
-  // Also check the email-based admin list as a fallback during development
   const adminEmails = process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()) ?? [];
   const userEmail = typeof session.user?.email === 'string' ? session.user.email : '';
   const isAdminByEmail = adminEmails.includes(userEmail);
@@ -22,5 +21,7 @@ export default async function AdminPage() {
     redirect('/');
   }
 
-  return <AdminPageClient />;
+  const reservations = await getAllReservations();
+
+  return <AdminPageClient initialReservations={reservations} />;
 }

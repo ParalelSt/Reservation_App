@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useReservationStore } from '@/lib/store/reservationStore';
+import { updateReservationStatus } from '@/lib/actions/reservations';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { formatTime } from '@/lib/helpers/timeSlots';
 import { downloadCalendarEvent } from '@/lib/helpers/calendar';
@@ -12,9 +12,9 @@ import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
 import { Button } from '@/components/shared/Button';
 import { IconButton } from '@/components/shared/IconButton';
+import { Avatar } from '@/components/shared/Avatar';
 import type { Reservation, FacilityType, ReservationStatus } from '@/types/reservation';
 
-const AVATAR_SIZE = 80;
 const ITEMS_PER_PAGE = 5;
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
@@ -48,6 +48,7 @@ interface Props {
     email: string;
     picture: string;
   };
+  initialReservations: Reservation[];
 }
 
 function getSelectedFacilitySummary(reservation: Reservation): string {
@@ -61,15 +62,12 @@ function getSelectedFacilitySummary(reservation: Reservation): string {
     .join(', ');
 }
 
-export function ProfilePageClient({ user }: Props) {
+export function ProfilePageClient({ user, initialReservations }: Props) {
   const [currentPage, setCurrentPage] = useState(0);
+  const [reservations, setReservations] = useState(initialReservations);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  const getReservationsByUser = useReservationStore((state) => state.getReservationsByUser);
-  const updateReservationStatus = useReservationStore((state) => state.updateReservationStatus);
-
-  const reservations = getReservationsByUser(user.id);
-
-  // Newest first by creation date
   const sortedReservations = [...reservations].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
@@ -80,7 +78,15 @@ export function ProfilePageClient({ user }: Props) {
   const paginatedReservations = sortedReservations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleCancel = (reservationId: string) => {
-    updateReservationStatus(reservationId, 'cancelled');
+    // Optimistic update
+    setReservations((prev) =>
+      prev.map((r) => (r.id === reservationId ? { ...r, status: 'cancelled' as const } : r)),
+    );
+
+    startTransition(async () => {
+      await updateReservationStatus(reservationId, 'cancelled');
+      router.refresh();
+    });
   };
 
   const emptyState = (
@@ -90,9 +96,9 @@ export function ProfilePageClient({ user }: Props) {
   );
 
   const reservationCards = paginatedReservations.map((reservation) => {
-    const isPending = reservation.status === 'pending';
+    const isPendingStatus = reservation.status === 'pending';
     const isConfirmed = reservation.status === 'confirmed';
-    const isCancellable = isPending || isConfirmed;
+    const isCancellable = isPendingStatus || isConfirmed;
 
     const cancelButton = isCancellable ? (
       <Button
@@ -209,13 +215,7 @@ export function ProfilePageClient({ user }: Props) {
     <div className="mx-auto flex max-w-3xl flex-col gap-8 pb-8">
       <Card>
         <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <Image
-            src={user.picture}
-            alt={user.name}
-            width={AVATAR_SIZE}
-            height={AVATAR_SIZE}
-            className="rounded-full"
-          />
+          <Avatar src={user.picture} alt={user.name} size="lg" />
           <div className="flex flex-col gap-1 text-center sm:text-left">
             <h1 className="text-xl font-bold text-gray-900">{user.name}</h1>
             <p className="text-sm text-gray-500">{user.email}</p>

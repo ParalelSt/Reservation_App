@@ -9,7 +9,7 @@ import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface Props {
-  user: { name?: string; picture?: string; email?: string } | null;
+  user: { id: string; name?: string; picture?: string; email?: string } | null;
 }
 
 const APP_NAME = 'ReserveHub';
@@ -19,7 +19,7 @@ export function Header({ user }: Props) {
 
   const userSection = user ? (
     <div className="flex items-center gap-2">
-      <NotificationBell />
+      <NotificationBell userId={user.id} />
       <ProfileDropdown user={user} />
     </div>
   ) : (

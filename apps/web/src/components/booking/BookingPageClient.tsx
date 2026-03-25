@@ -1,11 +1,12 @@
 'use client';
 
-import { Music, Flame, Dumbbell, Clock, CreditCard, FileText, Users, Minus } from 'lucide-react';
+import { useState } from 'react';
+import { Music, Flame, Dumbbell, Clock, CreditCard, FileText, Users, Minus, ShieldAlert } from 'lucide-react';
 import { useBookingForm } from '@/hooks/useBookingForm';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { formatTime } from '@/lib/helpers/timeSlots';
-import { FACILITIES, DURATION_OPTIONS, MAX_GUESTS } from '@/lib/constants/facilities';
+import { FACILITIES, DURATION_OPTIONS, MAX_GUESTS, FIXED_PRICE_FACILITIES } from '@/lib/constants/facilities';
 import { NumberStepper } from '@/components/shared/NumberStepper';
 import { SuccessModal } from '@/components/shared/SuccessModal';
 import type { FacilityType } from '@/types/reservation';
@@ -17,7 +18,7 @@ const FACILITY_ICONS: Record<FacilityType, typeof Music> = {
 };
 
 interface Props {
-  user: { id: string; name: string; email: string } | null;
+  user: { id: string; name: string; email: string };
   today: string;
 }
 
@@ -44,19 +45,10 @@ export function BookingPageClient({ user, today }: Props) {
     handleSubmit,
   } = useBookingForm(today);
 
-  const loginPrompt = !user ? (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-      <p className="text-amber-800">
-        Morate se prijaviti da biste napravili rezervaciju.
-      </p>
-      <a
-        href="/auth/login"
-        className="mt-4 inline-block rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white transition-all duration-150 ease-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-      >
-        Prijava
-      </a>
-    </div>
-  ) : null;
+  const [consentAccepted, setConsentAccepted] = useState(false);
+
+  const requiresConsent = formState.facilities.sauna > 0 || formState.facilities.gym > 0;
+  const isConsentValid = !requiresConsent || consentAccepted;
 
   const successModal = (
     <SuccessModal
@@ -73,6 +65,7 @@ export function BookingPageClient({ user, today }: Props) {
     const currentGuests = formState.facilities[facility.type];
     const isSelected = currentGuests > 0;
     const pricePerHour = facility.minimumPricePerHour;
+    const isFixedPrice = FIXED_PRICE_FACILITIES.includes(facility.type);
 
     const guestButtons = Array.from({ length: maxGuests }, (_, i) => i + 1).map((count) => {
       const isActive = currentGuests === count;
@@ -115,7 +108,7 @@ export function BookingPageClient({ user, today }: Props) {
             <span className="font-medium text-gray-900">{facility.name}</span>
           </div>
           <span className="text-xs text-gray-500">
-            {formatCurrency(pricePerHour)}/sat po osobi
+            {formatCurrency(pricePerHour)}/sat{isFixedPrice ? '' : ' po osobi'}
           </span>
         </div>
 
@@ -148,7 +141,9 @@ export function BookingPageClient({ user, today }: Props) {
 
         {isSelected && (
           <p className="text-xs text-indigo-600">
-            {formatCurrency(pricePerHour * currentGuests * formState.durationHours)} za {currentGuests} {currentGuests === 1 ? 'osobu' : 'osobe'} × {formState.durationHours}h
+            {isFixedPrice
+              ? `${formatCurrency(pricePerHour * formState.durationHours)} za ${formState.durationHours}h`
+              : `${formatCurrency(pricePerHour * currentGuests * formState.durationHours)} za ${currentGuests} ${currentGuests === 1 ? 'osobu' : 'osobe'} × ${formState.durationHours}h`}
           </p>
         )}
       </div>
@@ -310,10 +305,37 @@ export function BookingPageClient({ user, today }: Props) {
     </div>
   );
 
-  const submitButton = user ? (
+  const consentSection = requiresConsent ? (
+    <div className={mergeClassNames(
+      'flex items-start gap-3',
+      'rounded-lg border p-4',
+      consentAccepted ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50',
+    )}>
+      <input
+        id="consent-checkbox"
+        type="checkbox"
+        checked={consentAccepted}
+        onChange={(e) => setConsentAccepted(e.target.checked)}
+        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+      />
+      <label htmlFor="consent-checkbox" className="flex flex-col gap-1">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+          <ShieldAlert className="h-4 w-4 text-amber-600" />
+          Izjava o odgovornosti
+        </span>
+        <span className="text-xs text-gray-600">
+          Korištenjem saune i/ili teretane potvrđujem da sam svjestan/na rizika povezanih s
+          fizičkom aktivnošću i korištenjem opreme. Svu odgovornost za eventualne ozljede,
+          zdravstvene tegobe ili štetu preuzimam na sebe. Objekt ne snosi nikakvu odgovornost.
+        </span>
+      </label>
+    </div>
+  ) : null;
+
+  const submitButton = (
     <button
       type="button"
-      disabled={!isFormValid || isSubmitting}
+      disabled={!isFormValid || !isConsentValid || isSubmitting}
       onClick={() => handleSubmit(user.id, user.name, user.email)}
       aria-label="Pošalji rezervaciju"
       className={mergeClassNames(
@@ -329,7 +351,7 @@ export function BookingPageClient({ user, today }: Props) {
     >
       {isSubmitting ? 'Slanje...' : 'Pošalji Rezervaciju'}
     </button>
-  ) : null;
+  );
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8 pb-16">
@@ -340,7 +362,6 @@ export function BookingPageClient({ user, today }: Props) {
         </p>
       </div>
 
-      {loginPrompt}
       {successModal}
 
       <div className="flex flex-col gap-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -351,6 +372,7 @@ export function BookingPageClient({ user, today }: Props) {
         {endTimeNotice}
         {paymentSection}
         {notesSection}
+        {consentSection}
         {submitButton}
       </div>
     </div>

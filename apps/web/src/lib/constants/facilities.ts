@@ -1,11 +1,14 @@
-import type { FacilityInfo } from '@/types/reservation';
+import type { FacilityInfo, FacilityType } from '@/types/reservation';
 
 /** Minimum price per hour for each facility type (in EUR) */
 export const FACILITY_MINIMUM_PRICES = {
-  STUDIO: 10,
+  STUDIO: 15,
   SAUNA: 6,
   GYM: 8,
 } as const;
+
+/** Facilities where price is fixed per hour (not multiplied by guest count) */
+export const FIXED_PRICE_FACILITIES: readonly FacilityType[] = ['studio'] as const;
 
 /** Available duration options in hours */
 export const DURATION_OPTIONS = [1, 2, 3, 4] as const;

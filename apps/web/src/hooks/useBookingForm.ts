@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import type { FacilityType, FacilitySelection, Reservation, ReservationFormData } from '@/types/reservation';
-import { FACILITIES, DURATION_OPTIONS, OPERATING_HOURS, MAX_GUESTS } from '@/lib/constants/facilities';
-import { useReservationStore } from '@/lib/store/reservationStore';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import type { FacilityType, FacilitySelection, Reservation } from '@/types/reservation';
+import { FACILITIES, DURATION_OPTIONS, OPERATING_HOURS, MAX_GUESTS, FIXED_PRICE_FACILITIES } from '@/lib/constants/facilities';
 import { generateTimeSlots, calculateEndTime, hasTimeConflict } from '@/lib/helpers/timeSlots';
-import { useHydrated } from '@/hooks/useHydrated';
+import { createReservation, getActiveReservationsByDate } from '@/lib/actions/reservations';
 import {
   requestNotificationPermission,
   showBookingConfirmation,
@@ -48,10 +47,24 @@ export function useBookingForm(today: string) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [lastReservation, setLastReservation] = useState<Reservation | null>(null);
+  const [existingBookings, setExistingBookings] = useState<{ startTime: string; endTime: string }[]>([]);
 
-  const hydrated = useHydrated();
-  const store = useReservationStore();
+  // Fetch existing bookings for the selected date from the database
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchBookings() {
+      const reservations = await getActiveReservationsByDate(formState.date);
+      if (!cancelled) {
+        setExistingBookings(
+          reservations.map((b) => ({ startTime: b.startTime, endTime: b.endTime })),
+        );
+      }
+    }
+
+    fetchBookings();
+    return () => { cancelled = true; };
+  }, [formState.date, submitSuccess]);
 
   const selectedFacilityTypes = useMemo(
     () => FACILITY_TYPES.filter((type) => formState.facilities[type] > 0),
@@ -65,25 +78,16 @@ export function useBookingForm(today: string) {
       const guestCount = formState.facilities[type];
       if (guestCount === 0) return total;
       const facility = FACILITIES.find((f) => f.type === type);
-      return total + (facility?.minimumPricePerHour ?? 0) * formState.durationHours * guestCount;
+      const pricePerHour = facility?.minimumPricePerHour ?? 0;
+      const isFixed = FIXED_PRICE_FACILITIES.includes(type);
+      const multiplier = isFixed ? 1 : guestCount;
+      return total + pricePerHour * formState.durationHours * multiplier;
     }, 0);
   }, [formState.facilities, formState.durationHours]);
 
-  // All bookings for the selected date — shared space, so any booking blocks the time
-  // Use empty array until hydrated to avoid server/client mismatch
-  const allExistingBookings = useMemo(
-    () => {
-      if (!hydrated) return [];
-      return store
-        .getAllReservationsByDate(formState.date)
-        .map((b) => ({ startTime: b.startTime, endTime: b.endTime }));
-    },
-    [store, formState.date, hydrated],
-  );
-
   const timeSlots = useMemo(
-    () => generateTimeSlots(allExistingBookings),
-    [allExistingBookings],
+    () => generateTimeSlots(existingBookings),
+    [existingBookings],
   );
 
   const endTime = useMemo(
@@ -97,8 +101,8 @@ export function useBookingForm(today: string) {
   }, [endTime]);
 
   const hasConflict = useMemo(
-    () => hasTimeConflict(formState.startTime, endTime, allExistingBookings),
-    [formState.startTime, endTime, allExistingBookings],
+    () => hasTimeConflict(formState.startTime, endTime, existingBookings),
+    [formState.startTime, endTime, existingBookings],
   );
 
   const isPaymentValid = useMemo(
@@ -160,17 +164,18 @@ export function useBookingForm(today: string) {
 
       setIsSubmitting(true);
 
-      const formData: ReservationFormData = {
-        facilities: formState.facilities,
-        date: formState.date,
-        startTime: formState.startTime,
-        durationHours: formState.durationHours,
-        paymentAmount: formState.paymentAmount,
-        notes: formState.notes,
-      };
+      await createReservation(
+        formState.facilities,
+        formState.date,
+        formState.startTime,
+        formState.durationHours,
+        formState.paymentAmount,
+        formState.notes,
+        userId,
+        userName,
+        userEmail,
+      );
 
-      const reservation = store.addReservation(formData, userId, userName, userEmail);
-      setLastReservation(reservation);
       setIsSubmitting(false);
       setSubmitSuccess(true);
 
@@ -185,7 +190,7 @@ export function useBookingForm(today: string) {
       // Reset payment and notes after submit
       setFormState((prev) => ({ ...prev, paymentAmount: 0, notes: '' }));
     },
-    [formState, isFormValid, store, selectedFacilityTypes],
+    [formState, isFormValid, selectedFacilityTypes],
   );
 
   return {
@@ -201,7 +206,6 @@ export function useBookingForm(today: string) {
     isFormValid,
     isSubmitting,
     submitSuccess,
-    lastReservation,
     resetSuccess,
     setFacilityGuests,
     setDate,

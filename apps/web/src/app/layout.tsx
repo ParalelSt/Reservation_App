@@ -27,6 +27,7 @@ export default async function RootLayout({
   const sessionUser = session?.user;
   const user = sessionUser
     ? {
+        id: typeof sessionUser.sub === 'string' ? sessionUser.sub : '',
         name: typeof sessionUser.name === 'string' ? sessionUser.name : undefined,
         picture: typeof sessionUser.picture === 'string' ? sessionUser.picture : undefined,
         email: typeof sessionUser.email === 'string' ? sessionUser.email : undefined,

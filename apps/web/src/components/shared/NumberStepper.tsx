@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 
 interface Props {
@@ -16,7 +16,16 @@ interface Props {
 
 const ICON_SIZE = 'h-4 w-4';
 
-/** Number input with custom increment/decrement arrow buttons */
+const STEPPER_BUTTON_CLASS = mergeClassNames(
+  'flex h-10 w-10 shrink-0 items-center justify-center',
+  'rounded-lg border border-gray-300 bg-white',
+  'text-gray-600',
+  'transition-all duration-150 ease-out',
+  'hover:bg-gray-50 hover:text-gray-900',
+  'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+);
+
+/** Number input with custom increment/decrement buttons */
 export function NumberStepper({ id, value, onChange, min, step, placeholder, hasError, label }: Props) {
   const handleIncrement = () => {
     const next = value === 0 ? min : value + step;
@@ -34,8 +43,8 @@ export function NumberStepper({ id, value, onChange, min, step, placeholder, has
   };
 
   const inputClassName = mergeClassNames(
-    'w-full rounded-lg border py-2.5 pl-4 pr-12',
-    'text-sm text-gray-900',
+    'w-full rounded-lg border py-2.5 text-center',
+    'text-sm font-medium text-gray-900',
     'transition-all duration-150 ease-out',
     'focus:outline-none focus:ring-2 focus:ring-indigo-500',
     '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
@@ -45,7 +54,15 @@ export function NumberStepper({ id, value, onChange, min, step, placeholder, has
   );
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleDecrement}
+        aria-label="Smanji iznos"
+        className={STEPPER_BUTTON_CLASS}
+      >
+        <Minus className={ICON_SIZE} />
+      </button>
       <input
         id={id}
         type="number"
@@ -57,37 +74,14 @@ export function NumberStepper({ id, value, onChange, min, step, placeholder, has
         aria-label={label}
         className={inputClassName}
       />
-      <div className="absolute inset-y-0 right-0 flex flex-col border-l border-gray-300">
-        <button
-          type="button"
-          onClick={handleIncrement}
-          aria-label="Povećaj iznos"
-          className={mergeClassNames(
-            'flex flex-1 items-center justify-center px-2',
-            'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
-            'rounded-tr-lg',
-            'transition-all duration-150 ease-out',
-            'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500',
-          )}
-        >
-          <ChevronUp className={ICON_SIZE} />
-        </button>
-        <div className="border-t border-gray-300" />
-        <button
-          type="button"
-          onClick={handleDecrement}
-          aria-label="Smanji iznos"
-          className={mergeClassNames(
-            'flex flex-1 items-center justify-center px-2',
-            'text-gray-500 hover:bg-gray-100 hover:text-gray-700',
-            'rounded-br-lg',
-            'transition-all duration-150 ease-out',
-            'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500',
-          )}
-        >
-          <ChevronDown className={ICON_SIZE} />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleIncrement}
+        aria-label="Povećaj iznos"
+        className={STEPPER_BUTTON_CLASS}
+      >
+        <Plus className={ICON_SIZE} />
+      </button>
     </div>
   );
 }

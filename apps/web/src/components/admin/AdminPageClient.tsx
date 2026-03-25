@@ -5,7 +5,8 @@ import { useAdminReservations } from '@/hooks/useAdminReservations';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { formatTime } from '@/lib/helpers/timeSlots';
-import type { FacilityType, Reservation, ReservationStatus } from '@/types/reservation';
+import { AdminCalendar } from '@/components/admin/AdminCalendar';
+import type { FacilityType, ReservationStatus } from '@/types/reservation';
 
 const STATUS_FILTERS = [
   { value: 'all' as const, label: 'Sve' },
@@ -54,7 +55,13 @@ function getSelectedFacilitySummary(reservation: Reservation): string {
     .join(', ');
 }
 
-export function AdminPageClient() {
+import type { Reservation } from '@/types/reservation';
+
+interface AdminPageProps {
+  initialReservations: Reservation[];
+}
+
+export function AdminPageClient({ initialReservations }: AdminPageProps) {
   const {
     filteredReservations,
     statusCounts,
@@ -67,7 +74,7 @@ export function AdminPageClient() {
     handleConfirm,
     handleDecline,
     handleDelete,
-  } = useAdminReservations();
+  } = useAdminReservations({ initialReservations });
 
   const searchBar = (
     <div className="relative">
@@ -233,6 +240,8 @@ export function AdminPageClient() {
         <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
         <p className="text-gray-600">Upravljajte rezervacijama i pratite aktivnosti.</p>
       </div>
+
+      <AdminCalendar reservations={initialReservations} />
 
       <div className="flex flex-col gap-4">
         {searchBar}

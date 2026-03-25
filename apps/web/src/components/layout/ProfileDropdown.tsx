@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { User, LogOut } from 'lucide-react';
 import { mergeClassNames } from '@/lib/helpers/mergeClassNames';
-
-const AVATAR_SIZE = 32;
+import { Avatar } from '@/components/shared/Avatar';
 
 interface Props {
   user: { name?: string; picture?: string; email?: string };
@@ -43,19 +41,7 @@ export function ProfileDropdown({ user }: Props) {
     setIsOpen(false);
   };
 
-  const avatarContent = user.picture ? (
-    <Image
-      src={user.picture}
-      alt={user.name ?? 'Korisnik'}
-      width={AVATAR_SIZE}
-      height={AVATAR_SIZE}
-      className="rounded-full"
-    />
-  ) : (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100">
-      <User className="h-4 w-4 text-indigo-600" />
-    </div>
-  );
+  const avatarContent = <Avatar src={user.picture} alt={user.name ?? 'Korisnik'} size="sm" />;
 
   const menuItemClassName = mergeClassNames(
     'flex w-full items-center gap-3',
