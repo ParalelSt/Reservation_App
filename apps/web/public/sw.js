@@ -34,6 +34,11 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Fetch event — required for PWA installability (network-first strategy)
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request));
+});
+
 // Handle push events (for future server-sent push notifications)
 self.addEventListener('push', (event) => {
   const data = event.data?.json() ?? {};
