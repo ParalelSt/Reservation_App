@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { auth0 } from '@/lib/auth0';
 import { Providers } from '@/components/Providers';
@@ -11,10 +11,20 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#4f46e5',
+};
+
 export const metadata: Metadata = {
   title: 'ReserveHub - Rezervacije',
   description: 'Sustav za rezervaciju privatnih sesija u glazbenom studiju, sauni i teretani',
   manifest: '/manifest.json',
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': 'ReserveHub',
+  },
 };
 
 export default async function RootLayout({

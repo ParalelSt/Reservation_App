@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "ReserveHub - Rezervacije",
   "short_name": "ReserveHub",
   "description": "Rezervirajte privatne sesije u glazbenom studiju, sauni ili teretani",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",

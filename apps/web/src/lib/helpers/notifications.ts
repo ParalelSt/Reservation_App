@@ -76,7 +76,10 @@ export async function registerServiceWorker(): Promise<void> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
   try {
-    await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none',
+    });
   } catch {
     // Service worker registration failed — notifications will use fallback
   }
